@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- main pad -->
+    <path android:fillColor="#6B3E26"
+        android:pathData="M54,52 C64,52 72,62 72,69 C72,76 66,78 61,77 C57,76 55,75 54,75 C53,75 51,76 47,77 C42,78 36,76 36,69 C36,62 44,52 54,52 Z" />
+    <!-- toes -->
+    <path android:fillColor="#6B3E26" android:pathData="M38,48 m-6,0 a6,7.5 0 1,0 12,0 a6,7.5 0 1,0 -12,0" />
+    <path android:fillColor="#6B3E26" android:pathData="M48,38 m-6,0 a6,7.5 0 1,0 12,0 a6,7.5 0 1,0 -12,0" />
+    <path android:fillColor="#6B3E26" android:pathData="M60,38 m-6,0 a6,7.5 0 1,0 12,0 a6,7.5 0 1,0 -12,0" />
+    <path android:fillColor="#6B3E26" android:pathData="M70,48 m-6,0 a6,7.5 0 1,0 12,0 a6,7.5 0 1,0 -12,0" />
+</vector>

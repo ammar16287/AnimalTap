@@ -1,0 +1,29 @@
+# Animal Tap (Android)
+
+A tap-the-animals app for kids. Nine animals on a 3×3 grid: tap one to hear its sound, see it
+bounce/wiggle/spin, get a speech bubble ("Moo!") and a burst of notes and stars.
+
+- Native Kotlin, no third-party libraries (Android framework only)
+- minSdk 26 (Android 8.0), targetSdk 35
+- Package: `com.ammar.animaltap`
+- Sounds in `app/src/main/res/raw/` are synthesized originals (no licensing issues)
+
+## Build & run
+1. Open this folder in **Android Studio** (File → Open → `AnimalTap`).
+2. Let Gradle sync (it downloads Gradle 8.11.1 + Android plugin 8.7.3 the first time).
+3. Plug in a phone with USB debugging on (or start an emulator) and press **Run ▶**.
+
+Command line: `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`
+
+## Customizing
+Animals are defined in the `animals` list at the top of `MainActivity.kt`
+(name, emoji, bubble text, card color, sound file, animation type).
+To swap a sound, drop a new `.wav`/`.ogg` into `res/raw/` with the same name.
+
+## Building on GitHub (no Android Studio needed)
+Every push to `main` runs `.github/workflows/build-apk.yml` on GitHub Actions.
+- Download APKs from the repo's **Actions** tab → latest run → **Artifacts → AnimalTap-apk**.
+- `AnimalTap.apk` = signed release (needs the `KEYSTORE_BASE64` and `KEYSTORE_PASSWORD` secrets);
+  `AnimalTap-debug.apk` is always built.
+- Push a tag like `v1.0` to publish the APKs as a GitHub Release.
+- The keystore (`app/animaltap-release.jks`) and `keystore.properties` are git-ignored. Back them up.

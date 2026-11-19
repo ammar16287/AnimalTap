@@ -1,0 +1,14 @@
+/build
+/app/build
+.gradle
+.kotlin
+local.properties
+.idea
+*.iml
+.DS_Store
+captures/
+# Signing secrets - never commit
+keystore.properties
+*.jks
+*.keystore
+github-secrets.txt
