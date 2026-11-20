@@ -1,7 +1,12 @@
 # Animal Tap (Android)
 
-A tap-the-animals app for kids. Nine animals on a 3×3 grid: tap one to hear its sound, see it
+A tap-the-animals app for kids. Fifteen animals on a 3×5 grid (farm animals plus leopard,
+elephant, rhino, monkey, eagle and tiger): tap one to hear its sound, see it
 bounce/wiggle/spin, get a speech bubble ("Moo!") and a burst of notes and stars.
+
+The app opens on a home page with a **Play** button, a theme picker (Meadow, Ocean, Sunset,
+Night, Candy, Jungle — each with its own gradient and floating decorations, remembered between
+launches) and an **Exit** button. The 🏠 button or Back returns from the game to the home page.
 
 - Native Kotlin, no third-party libraries (Android framework only)
 - minSdk 26 (Android 8.0), targetSdk 35
@@ -28,3 +33,12 @@ Every push to `main` runs `.github/workflows/build-apk.yml` on GitHub Actions.
   `AnimalTap-debug.apk` is always built.
 - Push a tag like `v1.0` to publish the APKs as a GitHub Release.
 - The keystore (`app/animaltap-release.jks`) and `keystore.properties` are git-ignored. Back them up.
+
+## Publishing on Google Play
+- Upload `AnimalTap.aab` (built by `build-apk.bat` into `apk/`, or by GitHub Actions when the
+  keystore secrets are set). Google Play needs the `.aab` bundle, not the APK.
+- Store texts, graphics, privacy policy and Play Console form answers are in `store/`
+  (see `store/LISTING.md`).
+- Increase `versionCode` in `app/build.gradle.kts` for every new upload.
+- The release keystore is your **upload key**: if you lose it you can't upload updates without
+  going through Google's key-reset process, so back it up.

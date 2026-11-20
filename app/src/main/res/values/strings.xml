@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Animal Tap</string>
     <string name="title">Tap an animal!</string>
+    <string name="tagline">Tap, listen &amp; laugh!</string>
+    <string name="play">▶  Play</string>
+    <string name="themes">Pick a theme</string>
+    <string name="exit">✖  Exit</string>
+    <string name="home">Home</string>
 </resources>

@@ -163,7 +163,7 @@ def finish(x, target_rms_db=-12.0, hp=90):
 def save(name, x):
     pcm = np.int16(np.clip(x, -1, 1) * 32767)
     wavfile.write(os.path.join(OUT, name + ".wav"), SR, pcm)
-    print(f"{name:6s} {len(x) / SR:.2f}s")
+    print(f"{name:8s} {len(x) / SR:.2f}s")
 
 
 # ---------------------------------------------------------------- animals
@@ -293,8 +293,110 @@ def frog():
     return concat(rib, silence(0.07), bit)
 
 
+def leopard():
+    """Rasping "sawing" call: alternating harsh out-breath / in-breath grunts."""
+    def saw(f0, dur, gain):
+        return gain * voice(
+            dur,
+            f0_pts=[(0, f0 * 0.9), (dur * 0.3, f0 * 1.1), (dur, f0 * 0.8)],
+            formant_pts=[(0, [(550, 250), (1000, 300), (2300, 400), (3200, 500)]),
+                         (dur, [(480, 250), (900, 300), (2200, 400), (3200, 500)])],
+            amp_pts=[(0, 0), (0.03, 1.0), (dur * 0.6, 0.7), (dur, 0)],
+            tilt=0.7, jitter=0.08, shimmer=0.3, breath=0.9, sub=0.7, noise_pulse=0.7,
+            trem=(35.0, 0.4))
+    return concat(saw(85, 0.26, 1.0), silence(0.07), saw(105, 0.18, 0.6), silence(0.1),
+                  saw(80, 0.26, 1.0), silence(0.07), saw(100, 0.18, 0.6), silence(0.1),
+                  saw(78, 0.28, 0.95))
+
+
+def elephant():
+    """Brassy trumpet blast: bright, rough, rising then falling."""
+    d = 1.3
+    return voice(
+        d,
+        f0_pts=[(0, 380), (0.15, 620), (0.5, 680), (0.9, 640), (d, 500)],
+        formant_pts=[(0, [(500, 150), (1200, 200), (2500, 250), (3500, 400)]),
+                     (0.15, [(750, 150), (1450, 180), (2600, 250), (3600, 400)]),
+                     (d, [(650, 160), (1300, 200), (2500, 260), (3500, 400)])],
+        amp_pts=[(0, 0), (0.06, 0.8), (0.2, 1.0), (1.0, 0.9), (d, 0)],
+        tilt=0.5, jitter=0.02, shimmer=0.08, breath=0.2, sub=0.25, vib=(9.0, 0.02))
+
+
+def rhino():
+    """Two nasal snorts followed by a low grunt."""
+    nasal = [(300, 200), (1000, 300), (2200, 400), (3500, 600)]
+
+    def snort(dur):
+        return voice(
+            dur, f0_pts=[(0, 95), (dur, 80)], formant_pts=[(0, nasal), (dur, nasal)],
+            amp_pts=[(0, 0), (0.02, 1.0), (dur * 0.5, 0.6), (dur, 0)],
+            tilt=0.9, jitter=0.08, shimmer=0.3, breath=1.5, sub=0.5, noise_pulse=0.3)
+    grunt = voice(
+        0.45,
+        f0_pts=[(0, 90), (0.15, 120), (0.45, 70)],
+        formant_pts=[(0, [(500, 150), (900, 180), (2300, 300), (3200, 400)]),
+                     (0.45, [(420, 160), (800, 200), (2200, 300), (3200, 400)])],
+        amp_pts=[(0, 0), (0.03, 1.0), (0.3, 0.7), (0.45, 0)],
+        tilt=0.8, jitter=0.05, shimmer=0.2, breath=0.3, sub=0.6, trem=(22.0, 0.3))
+    return concat(snort(0.18), silence(0.08), snort(0.22), silence(0.12), grunt)
+
+
+def monkey():
+    """Excited "ooh ooh aah aah" hoots climbing in pitch."""
+    oo = [(350, 90), (800, 120), (2400, 250), (3400, 400)]
+    aa = [(1000, 130), (1600, 150), (2900, 250), (3900, 400)]
+
+    def hoot(f0a, f0b, v0, v1, dur, sub=0.0):
+        return voice(
+            dur,
+            f0_pts=[(0, f0a), (dur * 0.6, f0b), (dur, f0b * 0.92)],
+            formant_pts=[(0, v0), (dur * 0.5, v1), (dur, v1)],
+            amp_pts=[(0, 0), (0.03, 1.0), (dur * 0.7, 0.8), (dur, 0)],
+            tilt=0.8, jitter=0.02, shimmer=0.06, breath=0.15, sub=sub, vib=(6.0, 0.01))
+    return concat(hoot(330, 420, oo, oo, 0.2), silence(0.07),
+                  hoot(380, 480, oo, oo, 0.2), silence(0.07),
+                  hoot(500, 700, oo, aa, 0.24, 0.15), silence(0.05),
+                  hoot(620, 820, aa, aa, 0.26, 0.2))
+
+
+def eagle():
+    """High piercing "kleee" followed by a descending chatter."""
+    high = [(2500, 400), (4000, 500), (6000, 700), (8000, 900)]
+
+    def kee(f, dur):
+        return voice(
+            dur,
+            f0_pts=[(0, f * 0.85), (dur * 0.25, f * 1.05), (dur, f * 0.8)],
+            formant_pts=[(0, high), (dur, high)],
+            amp_pts=[(0, 0), (0.01, 1.0), (dur * 0.6, 0.8), (dur, 0)],
+            tilt=0.9, jitter=0.02, shimmer=0.08, breath=0.25, sub=0.2)
+    parts = [kee(2300, 0.32), silence(0.06)]
+    for i in range(5):
+        parts += [kee(2200 - i * 120, 0.09), silence(0.04)]
+    return concat(*parts)
+
+
+def tiger():
+    """Rumbling growl that bursts into a deep "AAUURGH" roar."""
+    d = 1.9
+    return voice(
+        d,
+        f0_pts=[(0, 70), (0.25, 85), (0.5, 150), (0.9, 130), (1.4, 95), (d, 65)],
+        formant_pts=[(0, [(350, 180), (700, 220), (2100, 300), (3100, 400)]),     # "rr"
+                     (0.35, [(400, 180), (750, 220), (2150, 300), (3100, 400)]),
+                     (0.6, [(750, 200), (1150, 220), (2500, 300), (3300, 400)]),  # "aa"
+                     (1.4, [(500, 200), (850, 220), (2300, 300), (3200, 400)]),   # "oo"
+                     (d, [(450, 200), (800, 220), (2200, 300), (3200, 400)])],
+        amp_pts=[(0, 0), (0.1, 0.35), (0.35, 0.45), (0.6, 1.0), (1.2, 0.85), (1.6, 0.4), (d, 0)],
+        tilt=0.75, jitter=0.06, shimmer=0.25, breath=0.5, sub=0.7, noise_pulse=0.5,
+        trem=(24.0, 0.4))
+
+
 if __name__ == "__main__":
-    loud = {"bird": -13.5, "lion": -11.5}
+    loud = {"bird": -13.5, "lion": -11.5, "eagle": -14.0, "tiger": -11.5}
     for name, fn in [("cow", cow), ("dog", dog), ("cat", cat), ("duck", duck), ("sheep", sheep),
-                     ("pig", pig), ("lion", lion), ("bird", bird), ("frog", frog)]:
+                     ("pig", pig), ("lion", lion), ("bird", bird), ("frog", frog),
+                     # New animals go last so the RNG sequence (and the sounds above) stay unchanged.
+                     ("leopard", leopard), ("elephant", elephant), ("rhino", rhino),
+                     ("monkey", monkey), ("eagle", eagle), ("tiger", tiger)]:
         save(name, finish(fn(), target_rms_db=loud.get(name, -12.0)))

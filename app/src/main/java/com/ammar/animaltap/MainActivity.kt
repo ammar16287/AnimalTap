@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -21,12 +22,16 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.window.OnBackInvokedDispatcher
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.BounceInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.cos
@@ -45,6 +50,16 @@ data class Animal(
     val move: Move,
 )
 
+/** A background theme: gradient colors, text color and floating decorations. */
+data class BgTheme(
+    val name: String,
+    val emoji: String,
+    val colors: IntArray,
+    val textColor: Int,
+    val dark: Boolean,
+    val decor: List<String>,
+)
+
 class MainActivity : Activity() {
 
     private val animals = listOf(
@@ -57,22 +72,73 @@ class MainActivity : Activity() {
         Animal("Lion", "🦁", "Roar!", 0xFFFFD166.toInt(), R.raw.lion, Move.PULSE),
         Animal("Bird", "🐦", "Tweet!", 0xFFBDE0FE.toInt(), R.raw.bird, Move.SPIN),
         Animal("Frog", "🐸", "Ribbit!", 0xFFCAFFBF.toInt(), R.raw.frog, Move.JUMP),
+        Animal("Leopard", "🐆", "Grrr!", 0xFFFFE0A3.toInt(), R.raw.leopard, Move.SHAKE),
+        Animal("Elephant", "🐘", "Pawoo!", 0xFFDCDCF0.toInt(), R.raw.elephant, Move.PULSE),
+        Animal("Rhino", "🦏", "Snort!", 0xFFE6E2D3.toInt(), R.raw.rhino, Move.HOP),
+        Animal("Monkey", "🐵", "Ooh-aah!", 0xFFEBCDAE.toInt(), R.raw.monkey, Move.WIGGLE),
+        Animal("Eagle", "🦅", "Screech!", 0xFFCDE7F0.toInt(), R.raw.eagle, Move.SPIN),
+        Animal("Tiger", "🐯", "Roarr!", 0xFFFFC28A.toInt(), R.raw.tiger, Move.JUMP),
+    )
+
+    private val themes = listOf(
+        BgTheme("Meadow", "🌻", intArrayOf(0xFFBFE6FF.toInt(), 0xFFE8F7FF.toInt(), 0xFF8BD17C.toInt()),
+            0xFF2B4C7E.toInt(), false, listOf("☁️", "🌼", "🦋", "🌷")),
+        BgTheme("Ocean", "🌊", intArrayOf(0xFF89F7FE.toInt(), 0xFF66A6FF.toInt(), 0xFF1E5799.toInt()),
+            0xFF0B3C6E.toInt(), false, listOf("🐠", "🐟", "🐚", "💧")),
+        BgTheme("Sunset", "🌅", intArrayOf(0xFFFFE29F.toInt(), 0xFFFFA99F.toInt(), 0xFFFF719A.toInt()),
+            0xFF7A2048.toInt(), false, listOf("☁️", "🌸", "🎈", "🌞")),
+        BgTheme("Night", "🌙", intArrayOf(0xFF0F2027.toInt(), 0xFF203A43.toInt(), 0xFF2C5364.toInt()),
+            Color.WHITE, true, listOf("⭐", "✨", "🌙", "🌟")),
+        BgTheme("Candy", "🍭", intArrayOf(0xFFFFDEE9.toInt(), 0xFFE3D5FF.toInt(), 0xFFB5FFFC.toInt()),
+            0xFF8E3A9D.toInt(), false, listOf("🍬", "🍭", "🧁", "🍩")),
+        BgTheme("Jungle", "🌴", intArrayOf(0xFFD4FC79.toInt(), 0xFF96E6A1.toInt(), 0xFF3A7D44.toInt()),
+            0xFF1F4D2B.toInt(), false, listOf("🌿", "🍃", "🌴", "🐒")),
     )
 
     private lateinit var soundPool: SoundPool
     private val soundIds = mutableMapOf<Int, Int>()
+
+    /** Root view: themed background, decorations, current screen, and pop-up effects on top. */
     private lateinit var overlay: FrameLayout
+    private lateinit var decorLayer: FrameLayout
+    private lateinit var screen: FrameLayout
+
+    private var themeIndex = 0
+    private val theme get() = themes[themeIndex]
+    private var onHome = true
+    private val decorAnimators = mutableListOf<Animator>()
+    private val screenAnimators = mutableListOf<Animator>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        themeIndex = getPreferences(MODE_PRIVATE).getInt(KEY_THEME, 0).coerceIn(themes.indices)
         setupSounds()
-        setContentView(buildUi())
+        setContentView(buildRoot())
+        applyTheme(themeIndex)
+        showHome(animate = true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: onBackPressed() is not called for apps targeting API 36.
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
+        }
     }
 
     override fun onDestroy() {
+        decorAnimators.forEach { it.cancel() }
+        screenAnimators.forEach { it.cancel() }
         soundPool.release()
         super.onDestroy()
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() = handleBack()   // Android 8-12
+
+    /** Back from the game returns to the home page; back on home closes the app. */
+    private fun handleBack() {
+        if (!onHome) showHome(animate = true) else exitApp()
+    }
+
+    private fun exitApp() = finishAndRemoveTask()
 
     // ---------- Sound ----------
 
@@ -93,52 +159,27 @@ class MainActivity : Activity() {
         soundIds[animal.soundRes]?.let { soundPool.play(it, 1f, 1f, 1, 0, 1f) }
     }
 
-    // ---------- Layout ----------
+    // ---------- Root, themes & decorations ----------
 
     private fun dp(v: Float) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics
     )
 
-    private fun buildUi(): View {
-        overlay = FrameLayout(this).apply {
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0xFFBFE6FF.toInt(), 0xFFE8F7FF.toInt(), 0xFF8BD17C.toInt())
-            )
-            clipChildren = false
+    private fun matchParent() = FrameLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+    private fun buildRoot(): View {
+        overlay = FrameLayout(this).apply { clipChildren = false }
+        decorLayer = FrameLayout(this).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
-
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            clipChildren = false
-            setPadding(dp(12f).toInt(), dp(8f).toInt(), dp(12f).toInt(), dp(12f).toInt())
+        // Re-scatter decorations whenever the background area changes size (first layout, insets).
+        decorLayer.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+            if (r - l != or - ol || b - t != ob - ot) decorLayer.post { buildDecorations() }
         }
-
-        column.addView(TextView(this).apply {
-            text = getString(R.string.title)
-            textSize = 30f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            setTextColor(0xFF2B4C7E.toInt())
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12f).toInt(), 0, dp(12f).toInt())
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-
-        val cols = 3
-        animals.chunked(cols).forEach { rowAnimals ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                clipChildren = false
-            }
-            rowAnimals.forEach { animal ->
-                row.addView(buildCard(animal), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
-                    val m = dp(6f).toInt()
-                    setMargins(m, m, m, m)
-                })
-            }
-            column.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        }
-
-        overlay.addView(column, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        screen = FrameLayout(this).apply { clipChildren = false }
+        overlay.addView(decorLayer, matchParent())
+        overlay.addView(screen, matchParent())
 
         // Keep content clear of the status and navigation bars (edge-to-edge on Android 15+).
         overlay.setOnApplyWindowInsetsListener { v, insets ->
@@ -155,6 +196,309 @@ class MainActivity : Activity() {
         return overlay
     }
 
+    private fun applyTheme(index: Int) {
+        themeIndex = index
+        getPreferences(MODE_PRIVATE).edit().putInt(KEY_THEME, index).apply()
+        overlay.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, theme.colors)
+        styleSystemBars()
+        decorLayer.post { buildDecorations() }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun styleSystemBars() {
+        window.statusBarColor = theme.colors.first()
+        window.navigationBarColor = theme.colors.last()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val light = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (theme.dark) 0 else light, light)
+        } else {
+            val light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            val flags = window.decorView.systemUiVisibility
+            window.decorView.systemUiVisibility = if (theme.dark) flags and light.inv() else flags or light
+        }
+    }
+
+    /** Scatter the theme's emojis over the background and let them gently float. */
+    private fun buildDecorations() {
+        decorAnimators.forEach { it.cancel() }
+        decorAnimators.clear()
+        decorLayer.removeAllViews()
+        val w = decorLayer.width.toFloat()
+        val h = decorLayer.height.toFloat()
+        if (w <= 0f || h <= 0f) return
+
+        repeat(12) { i ->
+            val d = TextView(this).apply {
+                text = theme.decor[i % theme.decor.size]
+                textSize = Random.nextInt(22, 40).toFloat()
+                alpha = Random.nextDouble(0.35, 0.7).toFloat()
+            }
+            d.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+            // Spread evenly down the screen, random left/right.
+            d.x = Random.nextFloat() * (w - d.measuredWidth).coerceAtLeast(1f)
+            d.y = (i + Random.nextFloat()) / 12f * h - d.measuredHeight / 2f
+            decorLayer.addView(d, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+            val drift = dp(Random.nextInt(12, 30).toFloat())
+            ObjectAnimator.ofPropertyValuesHolder(d,
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_X, d.translationX, d.translationX + drift),
+                PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, d.translationY, d.translationY - drift),
+                PropertyValuesHolder.ofFloat(View.ROTATION, -8f, 8f)
+            ).apply {
+                duration = Random.nextLong(2500, 5000)
+                startDelay = Random.nextLong(0, 1500)
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = AccelerateDecelerateInterpolator()
+                decorAnimators += this
+                start()
+            }
+        }
+    }
+
+    private fun switchScreen(content: View) {
+        screenAnimators.forEach { it.cancel() }
+        screenAnimators.clear()
+        screen.removeAllViews()
+        screen.addView(content, matchParent())
+    }
+
+    // ---------- Home page ----------
+
+    private fun showHome(animate: Boolean) {
+        onHome = true
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            clipChildren = false
+            clipToPadding = false
+            setPadding(dp(24f).toInt(), dp(24f).toInt(), dp(24f).toInt(), dp(24f).toInt())
+        }
+        val wrap = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        column.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
+
+        // Bouncing animal parade.
+        val parade = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            clipChildren = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        }
+        listOf("🐄", "🐶", "🐱", "🐷", "🐸").forEachIndexed { i, e ->
+            val t = TextView(this).apply { text = e; textSize = 40f; setPadding(dp(4f).toInt(), 0, dp(4f).toInt(), 0) }
+            parade.addView(t)
+            ObjectAnimator.ofFloat(t, View.TRANSLATION_Y, 0f, -dp(18f)).apply {
+                duration = 450
+                startDelay = i * 120L
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = DecelerateInterpolator()
+                screenAnimators += this
+                start()
+            }
+        }
+        column.addView(parade, wrap)
+
+        val title = TextView(this).apply {
+            text = getString(R.string.app_name)
+            textSize = 46f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setTextColor(theme.textColor)
+            gravity = Gravity.CENTER
+            setShadowLayer(dp(4f), 0f, dp(2f), 0x40000000)
+            setPadding(0, dp(12f).toInt(), 0, 0)
+        }
+        column.addView(title, wrap)
+
+        column.addView(TextView(this).apply {
+            text = getString(R.string.tagline)
+            textSize = 18f
+            setTextColor(theme.textColor)
+            alpha = 0.85f
+            gravity = Gravity.CENTER
+        }, wrap)
+
+        column.addView(View(this), LinearLayout.LayoutParams(0, dp(36f).toInt()))
+
+        val play = pillButton(getString(R.string.play), 0xFF4CAF50.toInt(), 30f) { showGame() }
+        column.addView(play, LinearLayout.LayoutParams(dp(240f).toInt(), dp(84f).toInt()))
+        // Gentle "tap me" pulse on the Play button.
+        ObjectAnimator.ofPropertyValuesHolder(play,
+            PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.06f),
+            PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.06f)
+        ).apply {
+            duration = 700
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            screenAnimators += this
+            start()
+        }
+
+        column.addView(View(this), LinearLayout.LayoutParams(0, dp(32f).toInt()))
+
+        column.addView(TextView(this).apply {
+            text = getString(R.string.themes)
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(theme.textColor)
+            gravity = Gravity.CENTER
+        }, wrap)
+        column.addView(buildThemePicker(), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        column.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
+
+        column.addView(pillButton(getString(R.string.exit), 0xFFE53935.toInt(), 20f) { exitApp() },
+            LinearLayout.LayoutParams(dp(170f).toInt(), dp(56f).toInt()))
+
+        switchScreen(column)
+
+        if (animate) {
+            title.scaleX = 0.3f; title.scaleY = 0.3f; title.alpha = 0f
+            title.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(500)
+                .setInterpolator(OvershootInterpolator(2f)).start()
+        }
+    }
+
+    private fun buildThemePicker(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            clipChildren = false
+            setPadding(dp(4f).toInt(), dp(12f).toInt(), dp(4f).toInt(), dp(12f).toInt())
+        }
+        themes.forEachIndexed { i, t ->
+            val selected = i == themeIndex
+            val swatch = FrameLayout(this).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, t.colors).apply {
+                    shape = GradientDrawable.OVAL
+                    if (selected) setStroke(dp(5f).toInt(), 0xFFFFC300.toInt())
+                    else setStroke(dp(3f).toInt(), Color.WHITE)
+                }
+                elevation = dp(if (selected) 8f else 3f)
+                addView(TextView(this@MainActivity).apply {
+                    text = t.emoji; textSize = 26f; gravity = Gravity.CENTER
+                }, matchParent())
+            }
+            val chip = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                clipChildren = false
+                isClickable = true
+                isFocusable = true
+                contentDescription = "${t.name} theme" + if (selected) ", selected" else ""
+                addView(swatch, LinearLayout.LayoutParams(dp(62f).toInt(), dp(62f).toInt()))
+                addView(TextView(this@MainActivity).apply {
+                    text = t.name
+                    textSize = 13f
+                    typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    setTextColor(theme.textColor)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(4f).toInt(), 0, 0)
+                })
+                setOnClickListener {
+                    it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    if (i != themeIndex) {
+                        applyTheme(i)
+                        showHome(animate = false)
+                    }
+                }
+            }
+            row.addView(chip, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(dp(8f).toInt(), 0, dp(8f).toInt(), 0)
+            })
+        }
+        return HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipChildren = false
+            addView(row)
+            // Keep the selected theme in view after the picker is rebuilt.
+            post {
+                val child = row.getChildAt(themeIndex) ?: return@post
+                scrollTo((child.left + child.width / 2 - width / 2).coerceAtLeast(0), 0)
+            }
+        }
+    }
+
+    /** A big rounded button with a ripple and a squish on press. */
+    private fun pillButton(label: String, color: Int, size: Float, onClick: () -> Unit): TextView {
+        val shape = GradientDrawable().apply {
+            cornerRadius = dp(100f)
+            setColor(color)
+            setStroke(dp(4f).toInt(), Color.WHITE)
+        }
+        val mask = GradientDrawable().apply { cornerRadius = dp(100f); setColor(Color.WHITE) }
+        return TextView(this).apply {
+            text = label
+            textSize = size
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = RippleDrawable(ColorStateList.valueOf(0x55FFFFFF), shape, mask)
+            elevation = dp(6f)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { v ->
+                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                squishCard(v)
+                v.postDelayed({ onClick() }, 150)
+            }
+        }
+    }
+
+    // ---------- Game page ----------
+
+    private fun showGame() {
+        if (isFinishing) return
+        onHome = false
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            clipChildren = false
+            clipToPadding = false
+            setPadding(dp(12f).toInt(), dp(8f).toInt(), dp(12f).toInt(), dp(12f).toInt())
+        }
+
+        // Top bar: home button + title.
+        val bar = FrameLayout(this).apply { clipChildren = false }
+        bar.addView(TextView(this).apply {
+            text = getString(R.string.title)
+            textSize = 28f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setTextColor(theme.textColor)
+            gravity = Gravity.CENTER
+            setPadding(dp(56f).toInt(), dp(12f).toInt(), dp(56f).toInt(), dp(12f).toInt())
+        }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        bar.addView(pillButton("🏠", 0x66FFFFFF, 22f) { showHome(animate = true) }.apply {
+            contentDescription = getString(R.string.home)
+            elevation = dp(2f)
+        }, FrameLayout.LayoutParams(dp(52f).toInt(), dp(52f).toInt(), Gravity.START or Gravity.CENTER_VERTICAL))
+        column.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        val cols = 3
+        animals.chunked(cols).forEach { rowAnimals ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                clipChildren = false
+            }
+            rowAnimals.forEach { animal ->
+                row.addView(buildCard(animal), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+                    val m = dp(6f).toInt()
+                    setMargins(m, m, m, m)
+                })
+            }
+            column.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+
+        switchScreen(column)
+        column.alpha = 0f; column.translationY = dp(40f)
+        column.animate().alpha(1f).translationY(0f).setDuration(300)
+            .setInterpolator(DecelerateInterpolator()).start()
+    }
+
     private fun buildCard(animal: Animal): View {
         val shape = GradientDrawable().apply {
             cornerRadius = dp(24f)
@@ -165,13 +509,14 @@ class MainActivity : Activity() {
 
         val emoji = TextView(this).apply {
             text = animal.emoji
-            textSize = 54f
+            textSize = 46f
             gravity = Gravity.CENTER
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         val label = TextView(this).apply {
             text = animal.name
-            textSize = 16f
+            textSize = 15f
+            maxLines = 1
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(0xFF3D3D3D.toInt())
             gravity = Gravity.CENTER
@@ -348,5 +693,9 @@ class MainActivity : Activity() {
                 start()
             }
         }
+    }
+
+    private companion object {
+        const val KEY_THEME = "theme"
     }
 }

@@ -10,7 +10,7 @@ if not defined JAVA_HOME (
 
 echo Started %DATE% %TIME% > build-log.txt
 echo JAVA_HOME=%JAVA_HOME% >> build-log.txt
-call gradlew.bat assembleDebug assembleRelease --console=plain >> build-log.txt 2>&1
+call gradlew.bat assembleDebug assembleRelease bundleRelease --console=plain >> build-log.txt 2>&1
 if errorlevel 1 (
   echo BUILD FAILED >> build-log.txt
   echo Build failed - see build-log.txt
@@ -20,8 +20,9 @@ if errorlevel 1 (
 if not exist apk mkdir apk
 copy /y "app\build\outputs\apk\release\app-release.apk" "apk\AnimalTap.apk" >nul 2>&1
 copy /y "app\build\outputs\apk\debug\app-debug.apk" "apk\AnimalTap-debug.apk" >nul 2>&1
+copy /y "app\build\outputs\bundle\release\app-release.aab" "apk\AnimalTap.aab" >nul 2>&1
 echo BUILD OK >> build-log.txt
-echo Done! APKs are in the "apk" folder.
+echo Done! APKs and the Play Store bundle (AnimalTap.aab) are in the "apk" folder.
 :end
 echo Finished %DATE% %TIME% >> build-log.txt
 timeout /t 5 >nul

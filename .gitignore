@@ -16,3 +16,4 @@ github-secrets.txt
 # Local build outputs
 /apk
 build-log.txt
+__pycache__/
