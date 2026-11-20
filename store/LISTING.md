@@ -8,7 +8,9 @@ Everything needed for the Play Console, in the order the Console asks for it.
 | App bundle (Production / Testing → Create release) | `apk/AnimalTap.aab`. Build it with `build-apk.bat`, or download the `AnimalTap.aab` artifact from GitHub Actions |
 | App icon 512×512 | `store/icon-512.png` |
 | Feature graphic 1024×500 | `store/feature-graphic-1024x500.png` |
-| Phone screenshots (2–8) | `store/screenshots/screenshot1.png` … `screenshot5.png` (1080×2160) |
+| Phone screenshots (2–8) | `store/screenshots/screenshot1.png` … `screenshot7.png` (1080×2160) |
+| 7-inch tablet screenshots | `store/screenshots/tablet-7inch/tablet7-1.png` … `tablet7-4.png` (1200×1920) |
+| 10-inch tablet screenshots | `store/screenshots/tablet-10inch/tablet10-1.png` … `tablet10-4.png` (1600×2560) |
 | Privacy policy | `store/privacy-policy.html`. Host it at a public URL and paste that URL into the Console (see below) |
 
 Regenerate the icon and feature graphic with `python tools/make_store_graphics.py`.

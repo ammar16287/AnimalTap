@@ -1,4 +1,4 @@
-package com.ammar.animaltap
+package com.game.animaltap
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -165,6 +165,14 @@ class MainActivity : Activity() {
         TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics
     )
 
+    /** Grows text and buttons on tablets (1.0 on phones, up to 1.8 on 10" tablets). */
+    private val uiScale by lazy {
+        (resources.configuration.smallestScreenWidthDp / 400f).coerceIn(1f, 1.8f)
+    }
+
+    /** dp scaled for the screen size. */
+    private fun sdp(v: Float) = dp(v * uiScale)
+
     private fun matchParent() = FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 
@@ -231,7 +239,7 @@ class MainActivity : Activity() {
         repeat(12) { i ->
             val d = TextView(this).apply {
                 text = theme.decor[i % theme.decor.size]
-                textSize = Random.nextInt(22, 40).toFloat()
+                textSize = Random.nextInt(22, 40) * uiScale
                 alpha = Random.nextDouble(0.35, 0.7).toFloat()
             }
             d.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
@@ -289,9 +297,9 @@ class MainActivity : Activity() {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
         listOf("🐄", "🐶", "🐱", "🐷", "🐸").forEachIndexed { i, e ->
-            val t = TextView(this).apply { text = e; textSize = 40f; setPadding(dp(4f).toInt(), 0, dp(4f).toInt(), 0) }
+            val t = TextView(this).apply { text = e; textSize = 40f * uiScale; setPadding(sdp(4f).toInt(), 0, sdp(4f).toInt(), 0) }
             parade.addView(t)
-            ObjectAnimator.ofFloat(t, View.TRANSLATION_Y, 0f, -dp(18f)).apply {
+            ObjectAnimator.ofFloat(t, View.TRANSLATION_Y, 0f, -sdp(18f)).apply {
                 duration = 450
                 startDelay = i * 120L
                 repeatCount = ValueAnimator.INFINITE
@@ -305,7 +313,7 @@ class MainActivity : Activity() {
 
         val title = TextView(this).apply {
             text = getString(R.string.app_name)
-            textSize = 46f
+            textSize = 46f * uiScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(theme.textColor)
             gravity = Gravity.CENTER
@@ -316,16 +324,16 @@ class MainActivity : Activity() {
 
         column.addView(TextView(this).apply {
             text = getString(R.string.tagline)
-            textSize = 18f
+            textSize = 18f * uiScale
             setTextColor(theme.textColor)
             alpha = 0.85f
             gravity = Gravity.CENTER
         }, wrap)
 
-        column.addView(View(this), LinearLayout.LayoutParams(0, dp(36f).toInt()))
+        column.addView(View(this), LinearLayout.LayoutParams(0, sdp(36f).toInt()))
 
         val play = pillButton(getString(R.string.play), 0xFF4CAF50.toInt(), 30f) { showGame() }
-        column.addView(play, LinearLayout.LayoutParams(dp(240f).toInt(), dp(84f).toInt()))
+        column.addView(play, LinearLayout.LayoutParams(sdp(240f).toInt(), sdp(84f).toInt()))
         // Gentle "tap me" pulse on the Play button.
         ObjectAnimator.ofPropertyValuesHolder(play,
             PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.06f),
@@ -338,11 +346,11 @@ class MainActivity : Activity() {
             start()
         }
 
-        column.addView(View(this), LinearLayout.LayoutParams(0, dp(32f).toInt()))
+        column.addView(View(this), LinearLayout.LayoutParams(0, sdp(32f).toInt()))
 
         column.addView(TextView(this).apply {
             text = getString(R.string.themes)
-            textSize = 18f
+            textSize = 18f * uiScale
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(theme.textColor)
             gravity = Gravity.CENTER
@@ -353,7 +361,7 @@ class MainActivity : Activity() {
         column.addView(View(this), LinearLayout.LayoutParams(0, 0, 1f))
 
         column.addView(pillButton(getString(R.string.exit), 0xFFE53935.toInt(), 20f) { exitApp() },
-            LinearLayout.LayoutParams(dp(170f).toInt(), dp(56f).toInt()))
+            LinearLayout.LayoutParams(sdp(170f).toInt(), sdp(56f).toInt()))
 
         switchScreen(column)
 
@@ -380,7 +388,7 @@ class MainActivity : Activity() {
                 }
                 elevation = dp(if (selected) 8f else 3f)
                 addView(TextView(this@MainActivity).apply {
-                    text = t.emoji; textSize = 26f; gravity = Gravity.CENTER
+                    text = t.emoji; textSize = 26f * uiScale; gravity = Gravity.CENTER
                 }, matchParent())
             }
             val chip = LinearLayout(this).apply {
@@ -390,10 +398,10 @@ class MainActivity : Activity() {
                 isClickable = true
                 isFocusable = true
                 contentDescription = "${t.name} theme" + if (selected) ", selected" else ""
-                addView(swatch, LinearLayout.LayoutParams(dp(62f).toInt(), dp(62f).toInt()))
+                addView(swatch, LinearLayout.LayoutParams(sdp(62f).toInt(), sdp(62f).toInt()))
                 addView(TextView(this@MainActivity).apply {
                     text = t.name
-                    textSize = 13f
+                    textSize = 13f * uiScale
                     typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                     setTextColor(theme.textColor)
                     gravity = Gravity.CENTER
@@ -409,7 +417,7 @@ class MainActivity : Activity() {
             }
             row.addView(chip, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(dp(8f).toInt(), 0, dp(8f).toInt(), 0)
+                setMargins(sdp(8f).toInt(), 0, sdp(8f).toInt(), 0)
             })
         }
         return HorizontalScrollView(this).apply {
@@ -434,7 +442,7 @@ class MainActivity : Activity() {
         val mask = GradientDrawable().apply { cornerRadius = dp(100f); setColor(Color.WHITE) }
         return TextView(this).apply {
             text = label
-            textSize = size
+            textSize = size * uiScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -466,16 +474,16 @@ class MainActivity : Activity() {
         val bar = FrameLayout(this).apply { clipChildren = false }
         bar.addView(TextView(this).apply {
             text = getString(R.string.title)
-            textSize = 28f
+            textSize = 28f * uiScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(theme.textColor)
             gravity = Gravity.CENTER
-            setPadding(dp(56f).toInt(), dp(12f).toInt(), dp(56f).toInt(), dp(12f).toInt())
+            setPadding(sdp(56f).toInt(), dp(12f).toInt(), sdp(56f).toInt(), dp(12f).toInt())
         }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         bar.addView(pillButton("🏠", 0x66FFFFFF, 22f) { showHome(animate = true) }.apply {
             contentDescription = getString(R.string.home)
             elevation = dp(2f)
-        }, FrameLayout.LayoutParams(dp(52f).toInt(), dp(52f).toInt(), Gravity.START or Gravity.CENTER_VERTICAL))
+        }, FrameLayout.LayoutParams(sdp(52f).toInt(), sdp(52f).toInt(), Gravity.START or Gravity.CENTER_VERTICAL))
         column.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         val cols = 3
@@ -509,13 +517,13 @@ class MainActivity : Activity() {
 
         val emoji = TextView(this).apply {
             text = animal.emoji
-            textSize = 46f
+            textSize = 46f * uiScale
             gravity = Gravity.CENTER
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         val label = TextView(this).apply {
             text = animal.name
-            textSize = 15f
+            textSize = 15f * uiScale
             maxLines = 1
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(0xFF3D3D3D.toInt())
@@ -615,7 +623,7 @@ class MainActivity : Activity() {
     private fun showBubble(card: View, animal: Animal) {
         val bubble = TextView(this).apply {
             text = animal.says
-            textSize = 22f
+            textSize = 22f * uiScale
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(0xFF2B2B2B.toInt())
             background = GradientDrawable().apply {
@@ -664,7 +672,7 @@ class MainActivity : Activity() {
         repeat(8) { i ->
             val p = TextView(this).apply {
                 text = symbols.random()
-                textSize = Random.nextInt(16, 26).toFloat()
+                textSize = Random.nextInt(16, 26) * uiScale
                 setTextColor(colors[i % colors.size].toInt())
                 typeface = Typeface.DEFAULT_BOLD
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO

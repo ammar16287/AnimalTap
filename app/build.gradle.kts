@@ -11,14 +11,14 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "com.ammar.animaltap"
+    namespace = "com.game.animaltap"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.ammar.animaltap"
+        applicationId = "com.game.animaltap"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
+        versionCode = 4
         versionName = "1.1"
     }
 
